@@ -1,35 +1,38 @@
 # Rocket League Stats Suite
 
-Three tools for Rocket League players and creators, all built on one shared core
-that reads the game's local **Stats API** WebSocket:
+Rocket League has a WebSocket built into the game client that streams live
+match data to your own machine. Almost nobody uses it. I wanted three things
+from it and ended up building all three on one shared core:
 
-1. **Personal Stats Tracker** — records every match to SQLite and shows trends on a Flask dashboard.
-2. **Stream Alert App** — fires custom audio/visual alerts to an OBS browser-source overlay.
-3. **Goal Highlight Auto-Editor** — syncs goal timings to your recording and cuts a highlight reel with ffmpeg.
+1. A personal stats tracker that records every match to SQLite and shows the
+   trends on a Flask dashboard.
+2. A stream alert app that fires audio and visual alerts to an OBS browser
+   source when something happens in the match.
+3. A goal highlight editor that lines up goal times with your recording and
+   cuts the reel with ffmpeg, so you never scrub through a 40 minute video
+   looking for the good bits.
 
-Everything runs against a **mock Stats API server** too, so you can develop, test
-and demo the whole suite without Rocket League running.
+The whole suite also runs against a mock Stats API server, so you can develop,
+test and demo everything without launching the game. The 81 tests do exactly
+that.
 
----
+## The Stats API
 
-## How the Stats API works
-
-Rocket League ships a client-side WebSocket that streams live match data from
-your own machine. Enable it once:
+Enable it once:
 
 1. Open `<Rocket League Install>\TAGame\Config\DefaultStatsAPI.ini`.
-2. Set `PacketSendRate` to a value above `0` (e.g. `10`).
+2. Set `PacketSendRate` to something above `0`. `10` is fine.
 3. Launch the game. The socket listens on `ws://localhost:49123`.
 
-It's **real-time only** — it never touches recorded video or past matches. It
-emits JSON messages of the form `{ "Event": "...", "Data": { ... } }`. The
-events and their payloads are documented in [`rlstats/events.py`](rlstats/events.py).
-
----
+It is real-time only. It knows nothing about recordings or past matches, it
+just streams JSON of the form `{ "Event": "...", "Data": { ... } }` while you
+play. Every event and its payload is documented in
+[`rlstats/events.py`](rlstats/events.py), and the mock server emits exactly
+those shapes.
 
 ## Setup
 
-Requires **Python 3.10+**. (Developed on 3.13.)
+Python 3.10 or newer. Developed on 3.13.
 
 ```bat
 cd rl-stats-suite
@@ -38,133 +41,106 @@ py -3.13 -m venv .venv
 pip install -r requirements.txt
 ```
 
-`ffmpeg` is only needed for Tool 3 (highlights). Install it separately and make
-sure it's on your PATH:
+ffmpeg is only needed for the highlight editor. Install it and make sure it's
+on your PATH:
 
 ```bat
 winget install Gyan.FFmpeg
 ```
 
-Optional: `copy config.example.json config.json` and edit it (player name, ports,
-etc.). Anything you leave out falls back to the defaults in
+Optionally `copy config.example.json config.json` and edit it for your player
+name and ports. Anything you leave out falls back to the defaults in
 [`rlstats/config.py`](rlstats/config.py).
 
----
+## Quick start with no game
 
-## Quick start (no game required)
-
-Everything is driven through one launcher, `rl.py`:
+Everything goes through one launcher, `rl.py`.
 
 ```bat
-:: Simulate a match and record it, then open the dashboard — one command:
+:: Simulate a match, record it, open the dashboard. One command.
 python rl.py demo
 
-:: Or fill the dashboard with demo data instantly:
+:: Or fill the dashboard with fake history instantly:
 python rl.py seed --matches 40
 python rl.py dashboard
 ```
 
-To use it with the real game, just start the relevant tool while RL is running
-with the Stats API enabled (no mock needed).
+To use it with the real game, start the tool you want while Rocket League is
+running with the Stats API on. No mock needed.
 
----
-
-## Tool 1 — Personal Stats Tracker
+## Tool 1, the stats tracker
 
 ```bat
-python rl.py track        :: background recorder: writes each finished match to SQLite
+python rl.py track        :: background recorder, writes each finished match to SQLite
 python rl.py dashboard    :: open http://127.0.0.1:5000
 ```
 
-- The recorder ([`tracker/recorder.py`](tracker/recorder.py)) listens for
-  `MatchEnded`, builds a per-player snapshot, accumulates boost usage from the
-  live ticks, and writes one match + per-player rows to SQLite
-  ([`tracker/db.py`](tracker/db.py)).
-- The dashboard ([`tracker/dashboard.py`](tracker/dashboard.py)) renders win
-  rate over time, saves per game, performance by arena, session summaries, and a
-  recent-matches table (Chart.js).
+The recorder ([`tracker/recorder.py`](tracker/recorder.py)) waits for
+`MatchEnded`, builds a snapshot per player, adds up the boost usage it
+accumulated from the live ticks, and writes one match row plus one row per
+player to SQLite ([`tracker/db.py`](tracker/db.py)). The dashboard
+([`tracker/dashboard.py`](tracker/dashboard.py)) charts win rate over time,
+saves per game, results by arena, session summaries and a recent matches table.
 
-Try it with the mock in two terminals:
+To try it against the mock, open three terminals:
 
 ```bat
-python rl.py mock           :: terminal 1 (loops matches forever)
+python rl.py mock           :: terminal 1, loops matches forever
 python rl.py track          :: terminal 2
 python rl.py dashboard      :: terminal 3
 ```
 
----
+### Giving the tracker to someone who doesn't code
 
-## Sharing the tracker with others (standalone .exe)
+`build_exe.bat` produces a single `dist\RLStatsTracker.exe` with PyInstaller.
+Send them that file. When they double-click it, it finds their Rocket League
+install and switches the Stats API on, records every real match in the
+background, and opens the dashboard in their browser. They close the window
+to stop. The database lives next to the exe, so their stats survive.
 
-Non-technical people don't need Python, the terminal, or this repo — just one file.
+If their game is under `Program Files` and the API isn't on yet, enabling it
+needs admin once. The app says so, they right-click and run as administrator
+one time, and after that it runs normally. `python rl.py setup-api` does the
+same thing by hand.
 
-**Build it** (on a machine with the project set up):
+The `.bat` files in the root (`Start Tracker.bat`, `Open Dashboard.bat`,
+`Watch Live Events.bat`) are the same idea for a machine that already has the
+project set up.
 
-```bat
-build_exe.bat          :: or: python rl.py ... see the file
-```
+## Freeplay doesn't count
 
-This produces a single **`dist\RLStatsTracker.exe`**. Send that file to anyone.
+The Stats API streams every game state, including freeplay and training. The
+suite only records a goal or a match when opponents exist on a second team and
+the playlist isn't freeplay or training (the list is in `ignore_playlists` in
+the config). Otherwise your practice shots end up in the highlight reel and
+your win rate is nonsense.
 
-**What they do:** double-click `RLStatsTracker.exe`. It will:
-1. find Rocket League and turn on its Stats API for them,
-2. record every real match in the background (freeplay/training ignored),
-3. open the stats dashboard in their browser.
-
-They keep the window open while playing and close it to stop. Their database
-(`data\matches.db`) is created next to the .exe, so stats persist.
-
-> First-run note: if their Rocket League is under `Program Files` and the API
-> isn't enabled yet, enabling it needs admin once — the app says so; they
-> right-click → **Run as administrator** a single time, then run normally.
-> You can also enable it manually any time with `python rl.py setup-api`.
-
-### Background-only launchers (this machine)
-
-If you've got the project set up, these double-click `.bat` files skip the
-terminal too: **`Start Tracker.bat`**, **`Open Dashboard.bat`**,
-**`Watch Live Events.bat`**.
-
----
-
-## Real matches only (freeplay is ignored)
-
-The Stats API streams in *every* game state, including freeplay and training.
-The suite records a goal/match only when it's a **real match** — detected by
-opponents being present on a second team, plus a playlist that isn't
-freeplay/training (configurable via `ignore_playlists`). This keeps practice
-shots out of your highlight reels and junk out of your stats.
-
-See exactly what your game sends, and how each event is classified, with:
+To see what your game sends and how each event gets classified:
 
 ```bat
 python rl.py monitor --show-state
 ```
 
-Goals show `[WOULD TRACK]` in a real match and `[ignored: not a real match]`
-in freeplay — handy for confirming/tuning the filter against your install.
+Goals print `[WOULD TRACK]` in a real match and
+`[ignored: not a real match]` in freeplay. Useful for checking the filter
+against your own install.
 
----
-
-## Tool 2 — Stream Alert App
+## Tool 2, stream alerts
 
 ```bat
 python rl.py alerts
 ```
 
-This prints two URLs. In **OBS**, add a **Browser source** pointing at the
-overlay page (e.g. `http://127.0.0.1:8080/?hud=0`) over your game capture. The
-overlay connects back to the push socket automatically and animates alerts as
-events fire.
+It prints two URLs. In OBS, add a Browser source pointing at the overlay page
+(for example `http://127.0.0.1:8080/?hud=0`) on top of your game capture. The
+overlay connects to the push socket on its own and animates alerts as events
+come in.
 
-- Rules live in `alerts/rules.json` (copy [`alerts/rules.example.json`](alerts/rules.example.json)).
-  Each rule maps an event + conditions to an alert (title, subtitle, icon,
-  color, animation, sound). See the header of [`alerts/rules.py`](alerts/rules.py)
-  for the full schema and the available built-in (synthesized) sounds.
-- Preview the overlay's look without the game:
-  `http://127.0.0.1:8080/?demo=1` cycles sample alerts.
-
-Example rule:
+Rules live in `alerts/rules.json` (copy
+[`alerts/rules.example.json`](alerts/rules.example.json) to start). Each rule
+maps an event plus some conditions to an alert with a title, subtitle, icon,
+colour, animation and sound. The full schema and the list of built-in
+synthesised sounds are at the top of [`alerts/rules.py`](alerts/rules.py).
 
 ```json
 {
@@ -176,129 +152,111 @@ Example rule:
 }
 ```
 
----
+`http://127.0.0.1:8080/?demo=1` cycles through sample alerts so you can style
+the overlay without the game running.
 
-## Tool 3 — Goal Highlight Auto-Editor
+## Tool 3, the highlight editor
 
-The Stats API knows *when* goals happen but knows nothing about your video, so we
-sync two clocks with a single reference point:
+The Stats API knows when goals happen. It knows nothing about your video. So
+the two clocks get synced through one reference point:
 
 ```
-recording_start = system clock when recording starts   (the video's t=0)
-goal position   = goal_event_time − recording_start
+recording_start = system clock when the recording started   (the video's t=0)
+goal position   = goal_event_time - recording_start
 ```
 
-### Recommended: cut from your own recording (`hl-log` + `hl-cut`)
+Three ways to use it, from least effort to most control.
 
-Record however you already do (**OBS, NVIDIA ShadowPlay, Xbox Game Bar** — best
-quality, handles fullscreen + audio). We only log the goal times and cut. No
-screen capture by us, so none of the fullscreen/borderless/audio gotchas.
+### Cut from a recording you already made
+
+Record however you already do. OBS, ShadowPlay, Game Bar, whatever gives you
+the best quality. The suite only logs goal times and cuts.
 
 ```bat
-python rl.py hl-log              :: run this while you play (logs goal times)
-:: ...record your match in OBS/ShadowPlay as usual, then:
-python rl.py hl-cut "C:\Videos\match.mp4"      :: auto-matches goals + cuts the reel
-python rl.py hl-cut match.mp4 --dry-run        :: preview the plan
-python rl.py hl-cut match.mp4 --offset -1.5    :: nudge if timing is slightly off
+python rl.py hl-log              :: run this while you play, it logs goal times
+:: ...record your match as usual, then:
+python rl.py hl-cut "C:\Videos\match.mp4"      :: matches goals to the video and cuts the reel
+python rl.py hl-cut match.mp4 --dry-run        :: show the plan without cutting
+python rl.py hl-cut match.mp4 --offset -1.5    :: nudge if the timing is off
 ```
 
-It reads the video's start time from its `creation_time` metadata and matches
-the goals you logged by their timestamps — fully automatic, works with any
-recorder. Output: `<video>_reel.mp4`.
+It reads the recording's start time from the file's `creation_time` metadata
+and lines up the goals you logged by timestamp. Works with any recorder.
+Output is `<video>_reel.mp4`.
 
-### Alternative: let the tool record your screen (`hl-auto`)
-
-The tool records your screen itself, so the video's t=0 and the goal clock are
-the same instant. When the match ends it auto-cuts the reel. **Requires Rocket
-League in borderless/windowed** (exclusive fullscreen captures black/frozen).
+### Let the suite record the screen itself
 
 ```bat
 python rl.py hl-auto                 :: or double-click "Auto Highlights.bat"
 python rl.py hl-auto --pre 6 --post 4
-python rl.py hl-auto --desktop       :: capture whole desktop instead of the game window
+python rl.py hl-auto --desktop       :: capture the whole desktop instead of the game window
 ```
 
-- Captures only the Rocket League window by default (set `highlight_capture_window`).
-  **Run RL in borderless/windowed** — exclusive fullscreen can capture black.
-- Output: `data/recordings/match_<ts>.mkv` (full video) and `..._reel.mp4` (the reel).
-- If clips land slightly early/late, tune `highlight_capture_sync_offset` in config
-  (more negative = earlier) or pass `--offset` to a manual `hl-build`.
-- Real-time only: it can't find goals in footage recorded before the tool was running.
+Because the suite starts the recording, the video's t=0 and the goal clock are
+the same instant, and the reel gets cut the moment the match ends. This needs
+Rocket League in borderless or windowed mode. Exclusive fullscreen captures a
+black or frozen frame. Output is `data/recordings/match_<ts>.mkv` and
+`..._reel.mp4` next to it. If the clips land a bit early or late, set
+`highlight_capture_sync_offset` in the config (more negative means earlier).
 
-### Manual: sync to your own OBS recording (`hl-record` + `hl-build`)
+### Sync to an OBS recording by hand
 
-**Start the session at the same moment you start your OBS/screen recording:**
+Start this at the same moment you hit record in OBS:
 
 ```bat
 python rl.py hl-record --start --video "D:\clips\match.mkv"
 ```
 
-Leave it running; each goal is logged and the session file is saved live. Stop
-with `Ctrl+C`, then build the reel:
+Leave it running. Every goal gets logged and the session file is saved live.
+Stop with Ctrl+C, then build the reel:
 
 ```bat
 python rl.py hl-build <session.json> "D:\clips\match.mkv" --out reel.mp4
+python rl.py hl-build <session.json> --dry-run      :: see the cut plan, no ffmpeg needed
 ```
 
-- Each goal becomes a window (default 8s before → 5s after). Overlapping windows
-  are merged so footage isn't repeated.
-- The sync offset is the one thing that has to be right. If clips land slightly
-  early/late, correct the drift without re-recording:
-  `--offset -0.5` (shift everything half a second earlier).
-- Preview the cut plan without ffmpeg or a video: `--dry-run`.
+Each goal becomes a window, 8 seconds before to 5 seconds after by default,
+and overlapping windows merge so no footage repeats. If everything is
+consistently early or late, `--offset -0.5` shifts the whole reel half a second
+earlier without re-recording. The sync offset is the only thing that has to be
+right.
 
-```bat
-:: see exactly what would be cut:
-python rl.py hl-build <session.json> --dry-run
-```
-
----
-
-## Project layout
+## Layout
 
 ```
 rl-stats-suite/
-├── rl.py                 # unified launcher (all subcommands)
-├── rlstats/              # SHARED CORE
-│   ├── events.py         #   event names + payload schemas
-│   ├── listener.py       #   reconnecting WebSocket client + pub/sub
-│   ├── mock_server.py    #   simulated Stats API (no game needed)
+├── rl.py                 # unified launcher, all subcommands
+├── rlstats/              # shared core
+│   ├── events.py         #   event names and payload schemas
+│   ├── listener.py       #   reconnecting WebSocket client with pub/sub
+│   ├── mock_server.py    #   simulated Stats API, no game needed
 │   └── config.py         #   config loading
-├── tracker/              # TOOL 1: db, recorder, Flask dashboard (+ templates/static)
-├── alerts/               # TOOL 2: rule engine, push server, OBS overlay/
-├── highlights/           # TOOL 3: sync, recorder, ffmpeg editor
-└── tests/                # unit + end-to-end tests
+├── tracker/              # tool 1: db, recorder, Flask dashboard
+├── alerts/               # tool 2: rule engine, push server, OBS overlay
+├── highlights/           # tool 3: sync, recorder, ffmpeg editor
+└── tests/                # unit and end-to-end tests
 ```
 
-Build order, dependency-first: shared core → tracker → alerts → highlights.
-
----
-
-## Testing
+## Tests
 
 ```bat
 .venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-Covers the listener/mock end-to-end, the tracker's analytics SQL, the alert rule
-engine + the threaded→async push bridge (with a real overlay client), and the
-highlight sync math + clip planning. The tests spin up the mock server on
-loopback, so no game and no ffmpeg are required.
+81 tests. They cover the listener and mock end to end, the tracker's analytics
+SQL, the alert rule engine and the threaded-to-async push bridge with a real
+overlay client connected, and the highlight sync maths and clip planning. The
+tests start the mock server on loopback, so they need neither the game nor
+ffmpeg.
 
----
+## Limits
 
-## Notes & limitations
-
-- The Stats API is real-time and local-only. It can't reach back into footage
-  recorded without it running, and there's no historical/replay data — the SQLite
-  database is what builds meaning over many matches.
-- Tool 3 assumes you record live alongside the match (OBS or screen capture).
-- The mock server's numbers are simulated for testing; they aren't a model of
-  real RL balance.
-```
-
----
+The Stats API is live and local. It can't reach back into footage recorded
+while it wasn't running, and there is no replay or history endpoint. The SQLite
+database is what turns single matches into something worth looking at over
+time. The mock server's numbers are made up for testing and say nothing about
+real Rocket League balance.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
