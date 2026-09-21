@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Local config and user data
+config.json
+data/
+alerts/rules.json
+
+# Highlight output
+*.mp4
+*.mkv
+highlights_reel*.mp4
+
+# PyInstaller build output
+build/
+dist/
+*.spec
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Claude Code local config
+.claude/

@@ -1,0 +1,18 @@
+{
+  "_comment": "Copy this to config.json and edit. Anything you omit falls back to built-in defaults (see rlstats/config.py).",
+
+  "stats_api_url": "ws://localhost:49123",
+  "reconnect_delay": 3.0,
+  "local_player_name": null,
+
+  "dashboard_host": "127.0.0.1",
+  "dashboard_port": 5000,
+
+  "alert_overlay_host": "127.0.0.1",
+  "alert_overlay_http_port": 8080,
+  "alert_overlay_ws_port": 8765,
+
+  "highlight_pre_seconds": 8.0,
+  "highlight_post_seconds": 5.0,
+  "ffmpeg_path": "ffmpeg"
+}

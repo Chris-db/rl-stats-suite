@@ -1,0 +1,6 @@
+# Rocket League Stats Suite — Python dependencies
+# The Stats API listener uses raw TCP from the standard library (no package).
+websockets>=12,<14           # alert overlay push socket (Tool 2)
+Flask>=3,<4                  # Tool 1 stats dashboard
+# ffmpeg (Tool 3) is an external program, not a pip package — install separately.
+# PyInstaller (to build the shareable .exe) is a dev-only tool: pip install pyinstaller

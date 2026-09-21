@@ -1,0 +1,130 @@
+{
+  "rules": [
+    {
+      "name": "My goal",
+      "event": "GoalScored",
+      "when": { "scored_by_me": true },
+      "alert": {
+        "title": "GOAL!",
+        "subtitle": "{scorer} — {goal_speed} kph",
+        "icon": "🥅",
+        "color": "#2f8bff",
+        "animation": "pop",
+        "sound": "chime",
+        "duration_ms": 4500
+      }
+    },
+    {
+      "name": "Screamer",
+      "event": "GoalScored",
+      "when": { "scored_by_me": true, "goal_speed": { ">=": 100 } },
+      "alert": {
+        "title": "WHAT A SCREAMER!",
+        "subtitle": "{goal_speed} kph rocket",
+        "icon": "🚀",
+        "color": "#ff8b32",
+        "animation": "flash",
+        "sound": "airhorn",
+        "duration_ms": 5000
+      }
+    },
+    {
+      "name": "My assist",
+      "event": "GoalScored",
+      "when": { "assisted_by_me": true },
+      "alert": {
+        "title": "ASSIST",
+        "subtitle": "Set up {scorer}",
+        "icon": "🤝",
+        "color": "#34d399",
+        "animation": "slide",
+        "sound": "ding",
+        "duration_ms": 3500
+      }
+    },
+    {
+      "name": "Save",
+      "event": "StatfeedEvent",
+      "when": { "statfeed_type": "Save", "by_me": true },
+      "alert": {
+        "title": "SAVE!",
+        "subtitle": "Denied",
+        "icon": "🧤",
+        "color": "#2f8bff",
+        "animation": "slide",
+        "sound": "ding",
+        "duration_ms": 3000
+      }
+    },
+    {
+      "name": "Epic save",
+      "event": "StatfeedEvent",
+      "when": { "statfeed_type": "Epic Save", "by_me": true },
+      "alert": {
+        "title": "EPIC SAVE!",
+        "subtitle": "Highlight reel material",
+        "icon": "🛡️",
+        "color": "#a855f7",
+        "animation": "flash",
+        "sound": "coin",
+        "duration_ms": 4500
+      }
+    },
+    {
+      "name": "Demolition by me",
+      "event": "StatfeedEvent",
+      "when": { "statfeed_type": "Demolition", "by_me": true },
+      "alert": {
+        "title": "DEMOLISHED",
+        "subtitle": "Sent {victim} to the shadow realm",
+        "icon": "💥",
+        "color": "#ff8b32",
+        "animation": "pop",
+        "sound": "whoosh",
+        "duration_ms": 3500
+      }
+    },
+    {
+      "name": "I got demolished",
+      "event": "StatfeedEvent",
+      "when": { "statfeed_type": "Demolition", "against_me": true },
+      "alert": {
+        "title": "REKT",
+        "subtitle": "{main} got you",
+        "icon": "☠️",
+        "color": "#f87171",
+        "animation": "flash",
+        "sound": "buzz",
+        "duration_ms": 2500
+      }
+    },
+    {
+      "name": "Supersonic",
+      "event": "Supersonic",
+      "when": {},
+      "alert": {
+        "title": "SUPERSONIC",
+        "subtitle": "Maximum velocity",
+        "icon": "⚡",
+        "color": "#fbbf24",
+        "animation": "slide",
+        "sound": "whoosh",
+        "duration_ms": 2500
+      }
+    },
+    {
+      "name": "Conceded",
+      "event": "GoalScored",
+      "when": { "conceded": true },
+      "alert": {
+        "title": "Goal against",
+        "subtitle": "{scorer} scored",
+        "icon": "😤",
+        "color": "#64748b",
+        "animation": "slide",
+        "sound": "sad",
+        "duration_ms": 2500
+      }
+    }
+  ]
+}

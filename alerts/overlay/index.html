@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RL Alerts Overlay</title>
+  <link rel="stylesheet" href="overlay.css" />
+</head>
+<body>
+  <!-- Alerts stack here. Background stays transparent for OBS. -->
+  <div id="stack" class="stack"></div>
+
+  <!-- Tiny connection indicator; hidden in OBS via ?hud=0 -->
+  <div id="hud" class="hud">
+    <span id="dot" class="dot offline"></span>
+    <span id="status">connecting…</span>
+  </div>
+
+  <script src="overlay.js"></script>
+</body>
+</html>
